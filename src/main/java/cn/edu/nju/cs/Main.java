@@ -13,7 +13,7 @@ public class Main {
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         MiniJavaParser parser = new MiniJavaParser(tokenStream);
         ParseTree pt = parser.compilationUnit();
-        System.out.println(pt.toStringTree(parser));
+//        System.out.println(pt.toStringTree(parser));
         new MyTreeWalker().visit(pt);
     }
 
@@ -26,5 +26,6 @@ public class Main {
         
         File mjFile = new File(args[0]);
         run(mjFile);
+        System.out.println("Process exits with the code 0.");
     }
 }

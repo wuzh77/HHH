@@ -73,6 +73,6 @@ public class MiniJavaObject {
     }
     @Override
     public String toString() {
-        return "(" + type + ") " + value;
+        return value.toString();
     }
 }

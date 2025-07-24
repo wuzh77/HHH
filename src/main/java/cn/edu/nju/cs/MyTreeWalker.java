@@ -104,21 +104,21 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             }
         } else if (iden.equals("assert")) {
             if (!argList.getFirst().type.equals("boolean")) {
-                System.err.println("Assertion type must be boolean.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!(boolean)argList.getFirst().value) {
-                System.err.println("Assertion failed.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 33.");
+                System.exit(0);
             }
         } else if (iden.equals("length")) {
             if (argList == null || argList.isEmpty()) {
-                System.err.println("null pointer error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!(argList.getFirst().isString() || argList.getFirst().isArr)) {
-                System.err.println("length argument must be a string or arr.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "int";
@@ -130,12 +130,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return resObj;
         } else if (iden.equals("to_char_array")) {
             if (argList == null) {
-                System.err.println("null pointer error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!argList.getFirst().isString()) {
-                System.err.println("to-char array argument must be a string.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.setArr();
@@ -152,12 +152,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return resObj;
         } else if (iden.equals("to_string")) {
             if (argList == null) {
-                System.err.println("null pointer error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!(argList.getFirst().isArr && argList.getFirst().isChar())) {
-                System.err.println("to-string array argument must be a char array.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "string";
@@ -170,12 +170,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return resObj;
         } else if (iden.equals("atoi")) {
             if (argList == null) {
-                System.err.println("null pointer error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!argList.getFirst().isString()) {
-                System.err.println("atoi argument must be a string.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "int";
@@ -185,12 +185,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return resObj;
         } else if (iden.equals("itoa")) {
             if (argList == null) {
-                System.err.println("null pointer error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (!argList.getFirst().isInt()) {
-                System.err.println("itoa argument must be an integer.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "string";
@@ -624,24 +624,36 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
 
             List<Integer> indexlist_ = convert2IntList(indexList);
             if (!arr.isArr) {
-                System.err.println("Array access error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             if (arr.value == null) {
-                System.err.println("Array null error.");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
             MiniJavaObject findObj = null;
             List<MiniJavaObject> tmp = (List<MiniJavaObject>) arr.value;
-            if (indexlist_.size() != 1) {
+            if (indexlist_.size() > 1) {
                 for (int i = 0; i < indexlist_.size(); i++) {
                     if (i != indexlist_.size() - 1) {
+                        if (indexlist_.get(i) >= tmp.size()) {
+                            System.out.println("Process exits with the code 34.");
+                            System.exit(0);
+                        }
                         tmp = (List<MiniJavaObject>) tmp.get(indexlist_.get(i)).value;
                     } else {
+                        if (indexlist_.get(i) >= tmp.size()) {
+                            System.out.println("Process exits with the code 34.");
+                            System.exit(0);
+                        }
                         findObj = tmp.get(indexlist_.get(i));
                     }
                 }
             } else {
+                if (indexlist_.get(0) >= tmp.size()) {
+                    System.out.println("Process exits with the code 34.");
+                    System.exit(0);
+                }
                 findObj = tmp.get(indexlist_.get(0));
             }
             MiniJavaObject res = new MiniJavaObject(null,null);
@@ -723,21 +735,21 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return;
         }
         if (!left.isVAR() && right.type != null && !Objects.equals(left.type, right.type) && !judgeIntChar(left, right)) {
-            System.err.println("Wrong types for left: " + left.type + " and right: " + right.type + "\n");
-            throw new RuntimeException();
+            System.out.println("Process exits with the code 34.");
+            System.exit(0);
         }
         if (left.isVAR() && right == null) {
-            System.err.println("can not infer type for variable initialized to 'null'" + "\n");
-            throw new RuntimeException();
+            System.out.println("Process exits with the code 34.");
+            System.exit(0);
         }
         if (!left.isVAR() && right.isTypeCasting && !Objects.equals(left.type, right.type)) {
-            System.err.println("Type casting error: Wrong types for left: " + left.type + " and right: " + right.type + "\n");
-            throw new RuntimeException();
+            System.out.println("Process exits with the code 34.");
+            System.exit(0);
         }
 
         if (right.arrName != null && (right.isInt() && left.isChar())) {
-            System.err.println("cannot convert from 'int' to 'char'");
-            throw new RuntimeException();
+            System.out.println("Process exits with the code 34.");
+            System.exit(0);
         }
 
         String type = left.isVAR()? right.type: left.type;
@@ -775,8 +787,8 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 tmp = new MiniJavaObject("int", convert2Int(arr.get(i)));
             } else if (type.equals("char")) {
                 if (arr.get(i).arrName != null && !arr.get(i).isChar()) {
-                    System.err.println("type error.");
-                    throw new RuntimeException();
+                    System.out.println("Process exits with the code 34.");
+                    System.exit(0);
                 }
                 char val = convert2Char(arr.get(i));
 
@@ -933,6 +945,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         } else if (ctx.bop.getType() == MiniJavaParser.EQUAL || ctx.bop.getType() == MiniJavaParser.NOTEQUAL) {
             MiniJavaObject left = visitExpression(ctx.expression(0));
             MiniJavaObject right = visitExpression(ctx.expression(1));
+//            if (right.isInt()) {
+//                System.out.print("left = " + left + "   " + "right = " + right);
+//            }
             boolean res = false;
             if (left == null) {
                 if (right == null) {
@@ -951,22 +966,24 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             } else if (left.isArr && right.isArr) {
                 res = false;
             } else if (left.isArr || right.isArr) {
-                System.err.println("comparison type mismatch");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             } else {
 
                 if ((left.isChar() && right.isInt()) || (left.isInt() && right.isChar())) {
-
                     int leftnum = convert2Int(left);
                     int rightnum = convert2Int(right);
                     switch (ctx.bop.getType()) {
-                        case MiniJavaParser.EQUAL:
+                        case MiniJavaParser.EQUAL:  // 95
                             res = leftnum == rightnum;
                             break;
-                        case MiniJavaParser.NOTEQUAL:
+                        case MiniJavaParser.NOTEQUAL:   // 98
                             res = ! (leftnum == rightnum);
                             break;
                     }
+//                    if (right.isInt()) {
+//                        System.out.print(" mid res = " + res + "  left : " + leftnum + " right : " + rightnum + " " + " type :" + ctx.bop.getType() + " ");
+//                    }
                 } else if (left.isInt() && right.isInt()) {
                     int leftnum = convert2Int(left);
                     int rightnum = convert2Int(right);
@@ -980,8 +997,8 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                     }
                 } else {
                     if (!left.type.equals(right.type)) {
-                        System.err.println("comparison type mismatch");
-                        throw new RuntimeException();
+                        System.out.println("Process exits with the code 34.");
+                        System.exit(0);
                     }
                     switch (ctx.bop.getType()) {
                         case MiniJavaParser.EQUAL:
@@ -993,14 +1010,17 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                     }
                 }
             }
+//            if (right.isInt()) {
+//                System.out.println(" res = " + res);
+//            }
             return new MiniJavaObject("boolean", res);
         } else if (ctx.bop.getType() == MiniJavaParser.AND || ctx.bop.getType() == MiniJavaParser.OR) {
             MiniJavaObject left = visit(ctx.expression(0));
             MiniJavaObject right = visit(ctx.expression(1));
 
             if (!left.isBoolean() || !right.isBoolean()) {
-                System.err.println("type mismatch");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
 
             boolean res = false;
@@ -1060,8 +1080,8 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             MiniJavaObject cond =  visit(ctx.expression(0));
 
             if (!cond.isBoolean()) {
-                System.err.println("type mismatch");
-                throw new RuntimeException();
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
             }
 
             if (conver2Bool((String) cond.value)) {
@@ -1070,8 +1090,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 return visit(ctx.expression(2));
             }
         } else {
-            System.err.println("error");
-            throw new RuntimeException();
+            System.out.println("Process exits with the code 34.");
+            System.exit(0);
+            return null;
         }
     }
 
@@ -1120,8 +1141,11 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             res = (Integer) obj.value;
             return res;
         } else if (obj.isChar()) {
-            res = (Integer) (int)obj.value.toString().charAt(0);
-            return res;
+            if (obj.value instanceof String) {
+                return (int)obj.value.toString().charAt(0);
+            } else {
+                return (int) ((Character)obj.value);
+            }
         } else {
             String tmp = (String)  obj.value;
             int tmpInt = Integer.parseInt(tmp);
@@ -1145,7 +1169,6 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
 
         if (obj instanceof String) {
             int str = Integer.parseInt((String) obj);
-            System.out.println("str:" + str);
             return (char) str;
         }
 
@@ -1196,6 +1219,27 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         if (index != -1) {
             resultList.subList(index, resultList.size()).clear();
         }
+    }
+
+    private String convert2string(MiniJavaObject obj) {
+        if (obj == null) {
+            return null; // 处理 null 值
+        }
+        Object val = obj.value;
+
+        if (val instanceof Boolean) {
+            return ((Boolean) val).toString();
+        }
+        else if (val instanceof Integer) {
+            return ((Integer) val).toString();
+        }
+        else if (val instanceof Character) {
+            return ((Character) val).toString();
+        }
+        else if (val instanceof String) {
+            return (String) val;
+        }
+        return "";
     }
     private void initArr(String type, MiniJavaObject arr) {
         if (arr == null) {
