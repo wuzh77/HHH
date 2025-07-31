@@ -6,8 +6,8 @@ import java.util.*;
 public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
 
     private List<Map<String, MiniJavaObject>> resultList = null;
-    private final Stack<Method> methodStack = new Stack<>();
-    private final List<Method> methodsList = new ArrayList<>();
+    private Stack<List<Map<String, MiniJavaObject>>> methodStack = new Stack<>();
+    private List<Method> methodsList = new ArrayList<>();
     private List<Map<String, MiniJavaObject>> CurArgList = null;
     private List<MiniJavaObject> CurArgType = null;
 
@@ -17,38 +17,57 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         for (MiniJavaParser.MethodDeclarationContext methodContext : ctx.methodDeclaration()) {
             CurArgList = new ArrayList<>();
             CurArgType = new ArrayList<>();
-            Method method = new Method();
-            method.initMethod(methodContext);
             visitFormalParameters(methodContext.formalParameters());
-            method.argType = CurArgType;
-            method.argList = CurArgList;
+            String method_iden = methodContext.identifier().getText();
+            Method method = new Method(method_iden, CurArgType, CurArgList, methodContext);
             methodsList.add(method);
         }
 
         for (Method method : methodsList) {
             if (Objects.equals(method.iden, "main")) {
                 processMethod(method, new ArrayList<>());
+                System.out.println("Process exits with the code " + method.retVal + ".");
+                break;
             }
         }
+
         return null;
     }
 
 
     private MiniJavaObject processMethod(Method cur_method, List<MiniJavaObject> args) {
-        for (int i = 0; i < cur_method.argList.size(); i++) {
+        for (int i = 0; i < args.size(); i++) {
             for (Map.Entry<String, MiniJavaObject> entry : cur_method.argList.get(i).entrySet()) {
                 MiniJavaObject obj = entry.getValue();
-                obj.assign(args.get(i));
+                MiniJavaObject tmp = new MiniJavaObject(null, null);
+                tmp.assign(args.get(i));
+                obj.assign(tmp);
             }
         }
 
-        methodStack.push(cur_method);
-        resultList = cur_method.argList;
+
+        List<Map<String, MiniJavaObject>> methodArgList = new ArrayList<>();
+        for (int i = 0; i < cur_method.argList.size(); i++) {
+            for (Map.Entry<String, MiniJavaObject> entry : cur_method.argList.get(i).entrySet()) {
+                String key = entry.getKey();
+                MiniJavaObject obj = entry.getValue();
+                MiniJavaObject tmp = new MiniJavaObject(null, null);
+                tmp.assign(obj);
+                HashMap<String, MiniJavaObject> map = new HashMap<>();
+                map.put(key, tmp);
+                methodArgList.add(map);
+            }
+        }
+        resultList = methodArgList;
+        System.out.println(resultList);
+        methodStack.push(methodArgList);
         MiniJavaObject res = visitMethodDeclaration(cur_method.methodDeclarationContext);
+        cur_method.retVal = res;
         methodStack.pop();
         if (!methodStack.isEmpty()) {
-            resultList = methodStack.peek().argList;
+            resultList = methodStack.peek();
         }
+
         return res;
     }
 
@@ -107,7 +126,8 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 System.out.println("Process exits with the code 34.");
                 System.exit(0);
             }
-            if (!(boolean)argList.getFirst().value) {
+
+            if (!convert2Bool(argList.getFirst())) {
                 System.out.println("Process exits with the code 33.");
                 System.exit(0);
             }
@@ -122,9 +142,13 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             }
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "int";
-            if (argList.getFirst().isString()) {
+            if (argList.getFirst().isString() && !argList.getFirst().isArr) {
                 resObj.value = ((String)argList.getFirst().value).length();
             } else {
+                if (argList.getFirst().value == null) {
+                    System.out.println("Process exits with the code 34.");
+                    System.exit(0);
+                }
                 resObj.value = ((List<MiniJavaObject>)argList.getFirst().value).size();
             }
             return resObj;
@@ -140,7 +164,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.setArr();
             resObj.type = "char";
-            String str = (String) argList.getFirst().value;
+            String str = argList.getFirst().value.toString();
             List<MiniJavaObject> tmp = new ArrayList<>();
             for (int i=0; i<str.length(); i++) {
                 MiniJavaObject elem = new MiniJavaObject(null, null);
@@ -162,6 +186,10 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "string";
             List<MiniJavaObject> tmp = (List<MiniJavaObject>) argList.getFirst().value;
+            if (tmp == null) {
+                System.out.println("Process exits with the code 34.");
+                System.exit(0);
+            }
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < tmp.size(); i++) {
                 sb.append(tmp.get(i).value);
@@ -188,13 +216,14 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 System.out.println("Process exits with the code 34.");
                 System.exit(0);
             }
-            if (!argList.getFirst().isInt()) {
+            if (!(argList.getFirst().isInt() || argList.getFirst().isChar())) {
                 System.out.println("Process exits with the code 34.");
                 System.exit(0);
             }
+
             MiniJavaObject resObj = new MiniJavaObject(null, null);
             resObj.type = "string";
-            resObj.value = argList.getFirst().value;
+            resObj.value = argList.getFirst().isChar() ? convert2Int(argList.getFirst()) : argList.getFirst().value.toString();
             return resObj;
         }
         MiniJavaObject resObj = null;
@@ -212,6 +241,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 }
                 boolean flag = true;
                 for (int i = 0; i < method.argType.size(); i++) {
+                    if (method.argType.get(i).isArr && tmp.get(i) == null) {
+                        continue;
+                    }
                     if (!method.argType.get(i).type.equals(tmp.get(i).type)) {
                         flag = false;
                         break;
@@ -254,7 +286,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         Map<String, MiniJavaObject> tmp = new HashMap<>();
         tmp.put(iden, resType);
         CurArgList.add(tmp);
-        CurArgType.add(resType);
+        MiniJavaObject argType = new MiniJavaObject(new String(resType.type), null);
+        argType.assign(resType);
+        CurArgType.add(argType);
         return null;
     }
 
@@ -263,6 +297,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
     public MiniJavaObject visitCreator(MiniJavaParser.CreatorContext ctx) {
         var type = visitCreatedName(ctx.createdName());
         var arrRest = visitArrayCreatorRest(ctx.arrayCreatorRest());
+//        System.out.println("arr rest = " + arrRest);
         if (ctx.arrayCreatorRest().getChildCount() == 3 && ctx.arrayCreatorRest().arrayInitializer() == null) {
             initArr(type.type, arrRest);
         }
@@ -274,17 +309,33 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
     public MiniJavaObject visitArrayCreatorRest(MiniJavaParser.ArrayCreatorRestContext ctx) {
         if (ctx.arrayInitializer() != null) {
             MiniJavaObject res = visitArrayInitializer(ctx.arrayInitializer());
-
             return res;
         } else {
+            boolean initNull = ctx.getChildCount() % 3 == 0;
             var res = visitExpression(ctx.expression(0));
             int num = convert2Int(res);
+            MiniJavaObject resObj = new MiniJavaObject(null, null);
+            resObj.setArr();
+            resObj.arrInitNull = initNull;
             List<MiniJavaObject> resList = new ArrayList<>();
+            resObj.value = resList;
             if (ctx.getChildCount() > 3) {
-                for (int i = 0; i < num; i++) {
-                    MiniJavaObject obj = new MiniJavaObject(null,null);
-                    obj.setArr();
-                    resList.add(obj);
+                for (int i = 0; i < ctx.expression().size(); i++) {
+                    MiniJavaObject arrNum = visitExpression(ctx.expression(i));
+                    int intArrNum = convert2Int(arrNum);
+                    if (i == 0) {
+                        for (int j = 0; j < intArrNum; j++) {
+                            MiniJavaObject arrEle = new MiniJavaObject(null, null);
+                            if (ctx.expression().size() > 1) {
+                                arrEle.setArr();
+                                arrEle.arrInitNull = initNull;
+                                arrEle.value = new ArrayList<>();
+                            }
+                            resList.add(arrEle);
+                        }
+                    } else {
+                        initMultiDimensionArr(resObj, intArrNum, i == (ctx.expression().size() - 1), initNull);
+                    }
                 }
             } else {
                 for (int i = 0; i < num; i++) {
@@ -292,12 +343,30 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                     resList.add(obj);
                 }
             }
-            MiniJavaObject resObj = new MiniJavaObject(null, resList);
-            resObj.setArr();
             return resObj;
         }
     }
 
+    private void initMultiDimensionArr(MiniJavaObject arr, int elenum, boolean finalDimen, boolean initNull) {
+
+        List<MiniJavaObject> objVal = (List<MiniJavaObject>) arr.value;
+        if (!objVal.isEmpty()) {
+            for (MiniJavaObject miniJavaObject : objVal) {
+                initMultiDimensionArr(miniJavaObject, elenum, finalDimen, initNull);
+            }
+            return;
+        }
+        for (int i = 0; i < elenum; i++) {
+            MiniJavaObject addEle = new MiniJavaObject(null, null);
+            if (!finalDimen) {
+                addEle.setArr();
+                addEle.arrInitNull = initNull;
+                addEle.value = new ArrayList<>();
+            }
+            objVal.add(addEle);
+        }
+
+    }
     @Override
     public MiniJavaObject visitCreatedName(MiniJavaParser.CreatedNameContext ctx) {
         return visitPrimitiveType(ctx.primitiveType());
@@ -389,7 +458,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             for (int i = 0; i < cnt; i++) {
                 MiniJavaObject element = visitVariableInitializer(ctx.variableInitializer().get(i));
                 MiniJavalist.add(element);
-                elementType = element.type;
+                if (element != null) {
+                    elementType = element.type;
+                }
             }
 
             MiniJavaObject res = new MiniJavaObject(elementType, MiniJavalist);
@@ -507,7 +578,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return resContinue;
         } else if (ctx.WHILE() != null) {
             MiniJavaObject parExp = visitParExpression(ctx.parExpression());
-            boolean whileFlag = (boolean)parExp.value;
+            boolean whileFlag = convert2Bool(parExp);
 
             while (whileFlag) {
                 MiniJavaObject resState = visitStatement(ctx.statement().getFirst());
@@ -515,11 +586,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                     break;
                 }
                 parExp = visitParExpression(ctx.parExpression());
-
-                whileFlag = (boolean)parExp.value;
-                if (resState != null && resState.isContinue) {
-                    continue;
-                }
+                whileFlag = convert2Bool(parExp);
             }
         }
 
@@ -604,24 +671,30 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             MiniJavaObject arr = null;
             if (exp.primary() == null) {
                 while (true) {
-                    if (exp.expression().getFirst().primary() == null) {
-                        MiniJavaObject backIndex = visitExpression(ctx.expression().get(1));
-                        indexList.add(backIndex);
-                        exp = ctx.expression().get(0);
-                    } else {
+                    if (exp.expression().size() > 1) {
                         MiniJavaObject backIndex = visitExpression(exp.expression().get(1));
                         indexList.add(backIndex);
-                        iden = exp.expression().get(0).primary().identifier().getText();
-                        arr = visitExpression(exp.expression().get(0));
+                        exp = exp.expression().get(0);
+                    } else {
+                        if (exp.primary() == null) {
+                            iden = null;
+                        } else {
+                            iden = exp.primary().identifier().getText();
+                        }
+                        arr = visitExpression(exp);
                         break;
                     }
                 }
             } else {
                 arr = visitExpression(exp);
-                iden =  exp.primary().identifier().getText();
+                if (exp.primary() == null) {
+                    iden = null;
+                } else {
+                    iden = exp.primary().identifier().getText();
+                }
             }
             Collections.reverse(indexList);
-
+//            System.out.println(indexList);
             List<Integer> indexlist_ = convert2IntList(indexList);
             if (!arr.isArr) {
                 System.out.println("Process exits with the code 34.");
@@ -753,27 +826,29 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         }
 
         String type = left.isVAR()? right.type: left.type;
-        Object value = right.value;
         result.type = type;
-        result.value = value;
+        result.value = right.value;
         result.isArr = right.isArr;
         if (right.isArr) {
             List<MiniJavaObject> MiniJavalist = (List<MiniJavaObject>) result.value;
-            result.value = _initArr(MiniJavalist, left.type);
+            result.value = _initArr(MiniJavalist, left.isVAR()? right.type: left.type, right.arrInitNull);
         }
     }
 
-    private List<MiniJavaObject> _initArr(List<MiniJavaObject> arr, String type) {
+    private List<MiniJavaObject> _initArr(List<MiniJavaObject> arr, String type, boolean initNull) {
         if (arr == null || arr.isEmpty()) {
             return new ArrayList<>();
         }
-        if (arr.getFirst() == null) {
+        if (arr.getFirst() == null && !initNull) {
             return arr;
         }
-        if (arr.getFirst().isArr) {
+        if (arr.getFirst() != null && arr.getFirst().isArr) {
             List<MiniJavaObject> res = new ArrayList<>();
             for (int i=0; i<arr.size(); i++) {
-                List<MiniJavaObject> tmp = _initArr((List<MiniJavaObject>)arr.get(i).value, type);
+                List<MiniJavaObject> tmp = null;
+                if (arr.get(i) != null) {
+                    tmp = _initArr((List<MiniJavaObject>)arr.get(i).value, type, initNull);
+                }
                 MiniJavaObject objRes = new MiniJavaObject(type, tmp);
                 objRes.isArr = true;
                 res.add(objRes);
@@ -781,24 +856,36 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return res;
         }
         List<MiniJavaObject> res = new ArrayList<>();
-        for (int i=0; i<arr.size(); i++) {
-            MiniJavaObject tmp = null;
-            if (type.equals("int")) {
-                tmp = new MiniJavaObject("int", convert2Int(arr.get(i)));
-            } else if (type.equals("char")) {
-                if (arr.get(i).arrName != null && !arr.get(i).isChar()) {
-                    System.out.println("Process exits with the code 34.");
-                    System.exit(0);
+        if (arr.getFirst().value != null) {
+            for (int i = 0; i < arr.size(); i++) {
+                MiniJavaObject tmp = null;
+                if (type.equals("int")) {
+                    tmp = new MiniJavaObject("int", convert2Int(arr.get(i)));
+                } else if (type.equals("char")) {
+                    if (arr.get(i).arrName != null && !arr.get(i).isChar()) {
+                        System.out.println("Process exits with the code 34.");
+                        System.exit(0);
+                    }
+                    char val = convert2Char(arr.get(i));
+                    tmp = new MiniJavaObject("char", val);
+                } else if (type.equals("boolean")) {
+                    tmp = new MiniJavaObject("boolean", arr.get(i).value);
+                } else {
+                    tmp = new MiniJavaObject("string", arr.get(i).value);
                 }
-                char val = convert2Char(arr.get(i));
-
-                tmp = new MiniJavaObject("char", val);
-            } else if (type.equals("boolean")) {
-                tmp = new MiniJavaObject("boolean", arr.get(i).value);
-            } else {
-                tmp = new MiniJavaObject("string", arr.get(i).value);
+                res.add(tmp);
             }
-            res.add(tmp);
+        } else {
+            for (int i = 0; i < arr.size(); i++) {
+                MiniJavaObject tmp = new MiniJavaObject(type, null);
+                switch (type) {
+                    case "int": tmp.value = 0; break;
+                    case "char": tmp.value = (char) 0; break;
+                    case "boolean": tmp.value = false; break;
+                    case "string": tmp.value = ""; break;
+                }
+                res.add(tmp);
+            }
         }
         return res;
     }
@@ -818,6 +905,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
     private MiniJavaObject visitPostFix(MiniJavaParser.ExpressionContext ctx) {
         MiniJavaObject tmp = visitExpression(ctx.expression().getFirst());
         int tmpvalue = convert2Int(tmp);
+        int original = tmpvalue;
         String iden = null;
         List<Integer> index = null;
         if (ctx.expression().getFirst().primary() != null) {
@@ -870,9 +958,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             }
         }
         if (tmp.isChar()) {
-            return new MiniJavaObject("char", (char) tmpvalue);
+            return new MiniJavaObject("char", (char) original);
         } else {
-            return new MiniJavaObject("int", tmpvalue);
+            return new MiniJavaObject("int", original);
         }
     }
 
@@ -924,10 +1012,10 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             MiniJavaObject left = visit(ctx.expression(0));
             MiniJavaObject right = visit(ctx.expression(1));
             MiniJavaObject res = new MiniJavaObject(null, null);
-            assignMiniJavaObject(left, right, res);
 
-            String identifier = ctx.expression(0).primary().identifier().getText();
-            modifyValue(identifier, res);
+            assignMiniJavaObject(left, right, res);
+            String identifier = left.arrName;
+            modifyValue(identifier, res, left.arrIndex);
             return res;
         } else if (ctx.bop.getType() == MiniJavaParser.LE || ctx.bop.getType() == MiniJavaParser.GE || ctx.bop.getType() == MiniJavaParser.GT || ctx.bop.getType() == MiniJavaParser.LT) {
             MiniJavaObject left  = visit(ctx.expression(0));
@@ -945,9 +1033,6 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         } else if (ctx.bop.getType() == MiniJavaParser.EQUAL || ctx.bop.getType() == MiniJavaParser.NOTEQUAL) {
             MiniJavaObject left = visitExpression(ctx.expression(0));
             MiniJavaObject right = visitExpression(ctx.expression(1));
-//            if (right.isInt()) {
-//                System.out.print("left = " + left + "   " + "right = " + right);
-//            }
             boolean res = false;
             if (left == null) {
                 if (right == null) {
@@ -955,8 +1040,6 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 } else {
                     if (right.isArr) {
                         res = right.value == null;
-                    } else {
-                        res = false;
                     }
                 }
             } else if (right == null) {
@@ -981,9 +1064,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                             res = ! (leftnum == rightnum);
                             break;
                     }
-//                    if (right.isInt()) {
-//                        System.out.print(" mid res = " + res + "  left : " + leftnum + " right : " + rightnum + " " + " type :" + ctx.bop.getType() + " ");
-//                    }
+
                 } else if (left.isInt() && right.isInt()) {
                     int leftnum = convert2Int(left);
                     int rightnum = convert2Int(right);
@@ -1010,12 +1091,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                     }
                 }
             }
-//            if (right.isInt()) {
-//                System.out.println(" res = " + res);
-//            }
             return new MiniJavaObject("boolean", res);
         } else if (ctx.bop.getType() == MiniJavaParser.AND || ctx.bop.getType() == MiniJavaParser.OR) {
             MiniJavaObject left = visit(ctx.expression(0));
+            if (!convert2Bool(left) && ctx.bop.getType() == MiniJavaParser.AND) {
+                return new MiniJavaObject("boolean", false);
+            }
             MiniJavaObject right = visit(ctx.expression(1));
 
             if (!left.isBoolean() || !right.isBoolean()) {
@@ -1025,9 +1106,12 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
 
             boolean res = false;
             switch (ctx.bop.getType()) {
-                case MiniJavaParser.AND: res = conver2Bool((String) left.value) && conver2Bool((String) right.value); break;
-                case MiniJavaParser.OR: res = conver2Bool((String) left.value) || conver2Bool((String) right.value); break;
+                case MiniJavaParser.AND: res = convert2Bool(left) && convert2Bool(right); break;
+                case MiniJavaParser.OR: res = convert2Bool(left) || convert2Bool(right); break;
             }
+//            if (ctx.bop.getType() == MiniJavaParser.OR) {
+//                System.out.println(" res :" + res);
+//            }
             return new MiniJavaObject("boolean", res);
         } else if (ctx.bop.getType() == MiniJavaParser.ADD_ASSIGN) {
             MiniJavaObject left = visit(ctx.expression(0));
@@ -1038,7 +1122,9 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 int rightnum = convert2Int(right);
 
                 int res = leftnum + rightnum;
-                return new MiniJavaObject("int", res);
+                MiniJavaObject assign_res = new MiniJavaObject("int", res);
+                modifyValue(left.arrName,  assign_res, left.arrIndex);
+                return assign_res;
             }
 
             String res = left.value.toString() + right.value.toString();
@@ -1084,7 +1170,7 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
                 System.exit(0);
             }
 
-            if (conver2Bool((String) cond.value)) {
+            if (convert2Bool(cond)) {
                 return visit(ctx.expression(1));
             } else {
                 return visit(ctx.expression(2));
@@ -1098,19 +1184,25 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
 
     public MiniJavaObject visitPreFix(MiniJavaParser.ExpressionContext ctx) {
         MiniJavaObject tmp = visit(ctx.expression(0));
-        int tmpvalue = convert2Int(tmp);
-        if (MiniJavaParser.INC == ctx.prefix.getType()) {
-            tmpvalue++;
-        } else if (MiniJavaParser.DEC == ctx.prefix.getType()) {
-            tmpvalue--;
-        } else if (ctx.ADD() != null) {
-            tmpvalue = + tmpvalue;
-        } else if (ctx.SUB() != null) {
-            tmpvalue = - tmpvalue;
-        } else if (ctx.TILDE() != null) {
-            tmpvalue = ~tmpvalue;
+        MiniJavaObject res = null;
+        if (!tmp.isBoolean()) {
+            int tmpvalue = convert2Int(tmp);
+            if (MiniJavaParser.INC == ctx.prefix.getType()) {
+                tmpvalue++;
+            } else if (MiniJavaParser.DEC == ctx.prefix.getType()) {
+                tmpvalue--;
+            } else if (ctx.ADD() != null) {
+                tmpvalue = +tmpvalue;
+            } else if (ctx.SUB() != null) {
+                tmpvalue = -tmpvalue;
+            }
+            res = new MiniJavaObject("int", tmpvalue);
+        } else {
+            boolean tmpvalue = convert2Bool(tmp);
+            tmpvalue = !tmpvalue;
+            res = new MiniJavaObject("boolean", tmpvalue);
         }
-        return new MiniJavaObject(tmp.type, tmpvalue);
+        return res;
     }
 
     public MiniJavaObject typeCasting(MiniJavaParser.ExpressionContext ctx) {
@@ -1120,9 +1212,10 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         if (type.type.equals(exp.type)) {
             res = new MiniJavaObject(exp.type, exp.value);
         }
+//        System.out.println("type :" + type.type + " exp :" + exp);
         if (judgeIntChar(type, exp)) {
             if (type.isInt()) {
-                String tmp = (String) exp.value;
+                String tmp = exp.value.toString();
                 int tmpInt = tmp.charAt(0);
                 res = new MiniJavaObject(type.type, String.valueOf(tmpInt));
             } else {
@@ -1154,8 +1247,14 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
     }
 
 
-    private boolean conver2Bool(String inputStr) {
-        return Boolean.parseBoolean(inputStr);
+    private boolean convert2Bool(MiniJavaObject inputObj) {
+        if (inputObj.isBoolean()) {
+            return inputObj.value.toString().equals("true");
+        } else if (inputObj.isInt()) {
+            return inputObj.value.toString().equals("1");
+        } else {
+            return inputObj.value.toString().equals("true");
+        }
     }
     public static char convert2Char(MiniJavaObject inputobj) {
         Object obj = inputobj.value;
@@ -1185,11 +1284,29 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
         throw new IllegalArgumentException("不支持的类型: " + obj.getClass().getName());
     }
 
-    private void modifyValue(String iden, MiniJavaObject newValue) {
+    private void modifyValue(String iden, MiniJavaObject newValue, List<Integer> arrIndex) {
 
         for (Map<String, MiniJavaObject> map : resultList) {
             if (map != null && map.containsKey(iden)) {
-                map.put(iden, newValue); // 替换值
+                if (arrIndex == null || arrIndex.size() == 0) {
+                    map.put(iden, newValue);
+                } else {
+                    MiniJavaObject obj = map.get(iden);
+                    List<MiniJavaObject> tmpArr = (List<MiniJavaObject>) obj.value;
+
+                    if (arrIndex.size() == 1) {
+                        int resIndex = arrIndex.get(0);
+                        tmpArr.set(resIndex, newValue);
+                    } else {
+                        for (int i = 0; i < arrIndex.size(); i++) {
+                            if (i != arrIndex.size() - 1) {
+                                tmpArr = (List<MiniJavaObject>) tmpArr.get(arrIndex.get(i)).value;
+                            } else {
+                                tmpArr.set(arrIndex.get(i), newValue);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1246,10 +1363,10 @@ public class MyTreeWalker extends MiniJavaParserBaseVisitor<MiniJavaObject> {
             return;
         }
         List<MiniJavaObject> arrList = (List<MiniJavaObject>) arr.value;
-        if (arrList == null) {
+        if (arrList == null || arrList.isEmpty()) {
             return;
         }
-        if (arrList.get(0).isArr) {
+        if (arrList.getFirst().isArr) {
             for (int i = 0; i < arrList.size(); i++) {
                 initArr(type, arrList.get(i));
             }

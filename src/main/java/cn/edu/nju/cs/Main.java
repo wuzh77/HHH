@@ -23,9 +23,8 @@ public class Main {
             System.err.println("Error: Only one argument is allowed: the path of MiniJava file.");
             throw new RuntimeException();
         }
-        
+
         File mjFile = new File(args[0]);
         run(mjFile);
-        System.out.println("Process exits with the code 0.");
     }
 }

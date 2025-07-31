@@ -24,6 +24,8 @@ public class MiniJavaObject {
 
     public boolean isReturn = false;
 
+    public boolean arrInitNull = false;
+
     // constructor
     public MiniJavaObject(String ty, Object val) {
         this.type  = ty;
@@ -60,19 +62,37 @@ public class MiniJavaObject {
     }
 
     public void assign(MiniJavaObject obj) {
-        this.value = obj.value;
-        this.type = obj.type;
-        this.isArr = obj.isArr;
-        this.isTypeCasting = obj.isTypeCasting;
-        this.isFunc = obj.isFunc;
-        this.isBreak = obj.isBreak;
-        this.isContinue = obj.isContinue;
-        this.isReturn = obj.isReturn;
-        this.arrName =  obj.arrName;
-        this.arrIndex = obj.arrIndex;
+        if (obj == null) {
+            this.value = null;
+            this.type = null;
+            this.isArr = false;
+            this.isTypeCasting = false;
+            this.isFunc = false;
+            this.isBreak = false;
+            this.isContinue = false;
+            this.isReturn = false;
+            this.arrName =  null;
+            this.arrIndex = null;
+            this.arrInitNull = false;
+        } else {
+            this.value = obj.value;
+            this.type = obj.type;
+            this.isArr = obj.isArr;
+            this.isTypeCasting = obj.isTypeCasting;
+            this.isFunc = obj.isFunc;
+            this.isBreak = obj.isBreak;
+            this.isContinue = obj.isContinue;
+            this.isReturn = obj.isReturn;
+            this.arrName = obj.arrName;
+            this.arrIndex = obj.arrIndex;
+            this.arrInitNull = obj.arrInitNull;
+        }
     }
     @Override
     public String toString() {
+        if (value == null) {
+            return "null";
+        }
         return value.toString();
     }
 }
